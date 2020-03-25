@@ -1,6 +1,6 @@
 # three
 
-> a 3d vue.js  vue + three 3dpro
+> vue + three 3d pro
 
 ## Build Setup
 
