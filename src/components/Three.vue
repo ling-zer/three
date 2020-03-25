@@ -5,7 +5,7 @@
 <script>
 import * as THREE from "three";
 import { OBJLoader, MTLLoader } from "three-obj-mtl-loader";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { OrbitControls } from "../common/tool/OrbitControls";
 export default {
   data() {
     return {
@@ -20,7 +20,11 @@ export default {
       /**射线投射器 */
       raycaster: null,
       /**鼠标 */
-      mouse: null
+      mouse: null,
+      /**屋顶 */
+      roof: null, 
+      group: null,
+      requestId: null
     };
   },
   methods: {
@@ -53,10 +57,20 @@ export default {
       this.controls.target = new THREE.Vector3(0, 0, 0);
     },
     animate() {
+      var radius = this.controls.getSpherical().radius;
+      if(this.roof) {
+        if(radius && radius < 22) {
+          this.roof.children[0].material.visible = false;
+        } else {
+          this.roof.children[0].material.visible = true;
+        }
+      }
+      
       this.renderer.render(this.scene, this.camera);
-      requestAnimationFrame(this.animate);
+      this.requestId = requestAnimationFrame(this.animate);
     },
     init() {
+      this.group = new THREE.Group();
       this.initScene();
       this.initCamera();
       this.initRenderer();
@@ -76,7 +90,7 @@ export default {
           function(obj) {
             obj.position.set(10, 0, -6);
             obj.scale.set(0.01, 0.01, 0.01);
-            that.scene.add(obj);
+            that.group.add(obj);
           },
           // called while loading is progressing
           function(xhr) {
@@ -98,6 +112,7 @@ export default {
           obj.position.set(10, 0, -6);
           obj.scale.set(0.01, 0.01, 0.01);
           that.scene.add(obj);
+          that.roof = obj;
         },
         // called while loading is progressing
         function(xhr) {
@@ -109,15 +124,30 @@ export default {
         }
       );
     },
-    loadBox() {
-      var geometry = new THREE.BoxGeometry(1, 1, 1);
-      var material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-      var cube = new THREE.Mesh(geometry, material);
-      cube.position.set(-10, 1, -2);
-      let sprite = this.createSprite();
-      sprite.position.set(-10, 2, -2);
-      this.scene.add(cube);
-      this.scene.add(sprite);
+    loadModel() {
+      let that = this;
+      let objLoader = new OBJLoader();
+      objLoader.load(
+        "/static/models/亚托克斯.obj",
+        function(obj) {
+          obj.position.set(-10, 0.5, -2);
+          obj.scale.set(0.02, 0.02, 0.02);
+          // console.log(obj);
+          obj.$data = { //给obj绑定信息
+            name: '亚托克斯'
+          }
+          that.group.add(obj);
+          that.scene.add(that.group);
+        },
+        // called while loading is progressing
+        function(xhr) {
+          console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+        },
+        // called when loading has errors
+        function(error) {
+          console.log("An error happened");
+        }
+      );
     },
      /**绘制矩形 */
     drawRect(ctx) {
@@ -157,35 +187,54 @@ export default {
     },
     initRaycater() {
       this.raycaster = new THREE.Raycaster();
-      this.mouse = new THREE.Vector2();
+      this.mouse = new THREE.Vector3();
     },
     clickModel(event) {
-      console.log(this.scene);
-      this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      let x = (event.offsetX  / window.innerWidth) * 2 - 1;
+      let y = -(event.offsetY / window.innerHeight) * 2 + 1;
+      this.mouse.set(x, y, 0.5);
       this.raycaster.setFromCamera(this.mouse, this.camera);
-      var intersects = this.raycaster.intersectObjects(
-        this.scene.children,
+      var intersects = this.raycaster.intersectObject(
+        this.group,
         true
       ); //参数1：检测对象，参数2：是否检测该对象的children
-
-      const res = intersects.filter(res => res && res.object)[0];
-      if (res && res.object) {
-        res.object.material.color.set(0xff0000);
+      if(intersects.length) {
+        const res = intersects.filter(res => res && res.object)[0];
+        if (res && res.object && res.object.parent.$data) { //是否为绑定了自定义数据的模型
+          res.object.material.color.set(0xff0000);
+        }
       }
+      
+    },
+    onResize() {
+      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
   },
   mounted() {
     this.init();
     this.loadPlant();
-    // this.loadRoof();
-    this.loadBox();
+    this.loadRoof();
+    // this.loadBox();
+    this.loadModel();
     this.animate();
     document.getElementsByTagName("canvas")[0].style.verticalAlign = "bottom"; //解决canvas底部留白问题
     window.addEventListener("click", this.clickModel, false);
+    window.addEventListener("resize", this.onResize, false);
+  },
+  destroyed() {
+    cancelAnimationFrame(this.requestId);
+    this.scene = null;
+    this.camera = null;
+    this.renderer = null;
+    this.controls = null;
+    window.removeEventListener("resize", this.onResize, false);
+    window.removeEventListener("resize", this.onResize, false);
   }
 };
 </script>
 
 <style scoped>
+
 </style>
