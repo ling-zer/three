@@ -37,7 +37,7 @@ export default {
       this.scene.add(axisHelper);
     },
     initCamera() {
-      const aspect = window.innerWidth / window.innerHeight; //宽高可根据实际项目要求更改
+      const aspect = window.innerWidth / 1080; //宽高可根据实际项目要求更改 如果是窗口高度改为innerHeight
       this.camera = new THREE.PerspectiveCamera(45, aspect, 1, 2000);
       this.camera.position.set(15, 25, 20);
       this.camera.lookAt(new THREE.Vector3(0, 0, 0)); // 让相机指向原点
@@ -48,7 +48,7 @@ export default {
     initRenderer() {
       this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       this.renderer.setPixelRatio(window.devicePixelRatio);
-      this.renderer.setSize(window.innerWidth, window.innerHeight); //宽高可根据实际项目要求更改
+      this.renderer.setSize(window.innerWidth, 1080); //宽高可根据实际项目要求更改 如果是窗口高度改为innerHeight
       const container = document.getElementById("container");
       container.appendChild(this.renderer.domElement);
     },
@@ -133,10 +133,11 @@ export default {
           obj.position.set(-10, 0.5, -2);
           obj.scale.set(0.02, 0.02, 0.02);
           // console.log(obj);
-          obj.$data = { //给obj绑定信息
-            name: '亚托克斯'
+          /**克隆模型 */
+          for(let i = 0; i < 7; i += 2) {
+            that.cloneModel(obj, -8 + i, 0.5, -2, i);
           }
-          that.group.add(obj);
+          // that.group.add(obj);
           that.scene.add(that.group);
         },
         // called while loading is progressing
@@ -149,6 +150,24 @@ export default {
         }
       );
     },
+    /**克隆模型 */
+    cloneModel(obj, x, y, z, num) { //params: 模型， 坐标xyz，自定义数据
+      const cloneObj = obj.clone();
+      cloneObj.children.map((v, i) => {
+        if (v.material) {
+          v.material = obj.children[i].material.clone();
+        }
+      });
+      cloneObj.$data = {
+        name: '亚托克斯 ' + num + '号'
+      }
+      cloneObj.position.set(x, y, z);
+      this.group.add(cloneObj);
+      /**增加文字标签 */
+      const sprite = this.createSprite(cloneObj.$data);
+      sprite.position.set(x, y + 2, z);
+      this.scene.add(sprite);
+    },
      /**绘制矩形 */
     drawRect(ctx) {
       ctx.strokeStyle = "#0864ee";
@@ -157,7 +176,8 @@ export default {
       ctx.fillRect(1, 1, 378, 168);
       // ctx.scale(2, 2)
     },
-    createCanvas() {
+    /**绘制文字 */
+    createCanvas(data) {
       /* 创建画布 */
       var canvas = document.createElement("canvas");
       var context = canvas.getContext("2d");
@@ -171,13 +191,14 @@ export default {
       context.font = "16px bold";
       /**文字 */
       context.fillText("模型名称：", 10, 20);
-      context.fillText("我是模型", 100, 20);
+      context.fillText(data.name, 100, 20);
       context.fillText("模型：", 10, 40);
       context.fillText("ABCDEFG", 100, 40);
       return canvas;
     },
-    createSprite() {
-      var texture = new THREE.Texture(this.createCanvas());
+    /**创建精灵 */
+    createSprite(data) {
+      var texture = new THREE.Texture(this.createCanvas(data));
       texture.needsUpdate = true;
 
       var spriteMaterial = new THREE.SpriteMaterial({ map: texture });
@@ -191,7 +212,7 @@ export default {
     },
     clickModel(event) {
       let x = (event.offsetX  / window.innerWidth) * 2 - 1;
-      let y = -(event.offsetY / window.innerHeight) * 2 + 1;
+      let y = -(event.offsetY / 1080) * 2 + 1;  //宽高可根据实际项目要求更改 如果是窗口高度改为innerHeight
       this.mouse.set(x, y, 0.5);
       this.raycaster.setFromCamera(this.mouse, this.camera);
       var intersects = this.raycaster.intersectObject(
@@ -207,16 +228,15 @@ export default {
       
     },
     onResize() {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.camera.aspect = window.innerWidth / 1080;  //宽高可根据实际项目要求更改 如果是窗口高度改为innerHeight
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.renderer.setSize(window.innerWidth, 1080);  //宽高可根据实际项目要求更改 如果是窗口高度改为innerHeight
     }
   },
   mounted() {
     this.init();
     this.loadPlant();
     this.loadRoof();
-    // this.loadBox();
     this.loadModel();
     this.animate();
     document.getElementsByTagName("canvas")[0].style.verticalAlign = "bottom"; //解决canvas底部留白问题
