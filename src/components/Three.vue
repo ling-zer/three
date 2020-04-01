@@ -24,9 +24,12 @@ export default {
       mouse: null,
       /**屋顶 */
       roof: null, 
+      /**组 */
       group: null,
       requestId: null,
+      /**渲染文字 */
       CSSRender: null,
+      /**容器 */
       container: null
     };
   },
