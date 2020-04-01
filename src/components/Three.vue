@@ -6,6 +6,7 @@
 import * as THREE from "three";
 import { OBJLoader, MTLLoader } from "three-obj-mtl-loader";
 import { OrbitControls } from "../common/tool/OrbitControls";
+import { CSS2DObject, CSS2DRenderer} from "../common/tool/CSS2DRenderer"
 export default {
   data() {
     return {
@@ -24,7 +25,9 @@ export default {
       /**屋顶 */
       roof: null, 
       group: null,
-      requestId: null
+      requestId: null,
+      CSSRender: null,
+      container: null
     };
   },
   methods: {
@@ -49,24 +52,48 @@ export default {
       this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       this.renderer.setPixelRatio(window.devicePixelRatio);
       this.renderer.setSize(window.innerWidth, 1080); //宽高可根据实际项目要求更改 如果是窗口高度改为innerHeight
-      const container = document.getElementById("container");
-      container.appendChild(this.renderer.domElement);
+      // this.renderer.domElement.style.position = 'absolute';
+      // this.renderer.domElement.style.top = 0;
+
+      this.container = document.getElementById("container");
+      this.container.appendChild(this.renderer.domElement);
+    },
+    initCSSRender() {
+      this.CSSRender = new CSS2DRenderer();
+      this.CSSRender.setSize(window.innerWidth, 1080);
+      this.CSSRender.domElement.style.position = 'absolute';
+      this.CSSRender.domElement.style.top = 0;
+      this.container.appendChild(this.CSSRender.domElement);
     },
     initControl() {
-      this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+      this.controls = new OrbitControls(this.camera, this.CSSRender.domElement);
       this.controls.target = new THREE.Vector3(0, 0, 0);
+      // 视角最小距离
+      this.controls.minDistance = 12;
+      // 视角最远距离
+      this.controls.maxDistance = 100;
+      // 最大角度
+      this.controls.maxPolarAngle = Math.PI/4;
     },
     animate() {
       var radius = this.controls.getSpherical().radius;
       if(this.roof) {
         if(radius && radius < 22) {
           this.roof.children[0].material.visible = false;
+          for(let label of document.getElementsByClassName('label')) {
+            label.style.visibility = 'visible';
+            label.$data = radius;
+          }
         } else {
           this.roof.children[0].material.visible = true;
+          for(let label of document.getElementsByClassName('label')) {
+            label.style.visibility = 'hidden'
+          }
         }
       }
       
       this.renderer.render(this.scene, this.camera);
+      this.CSSRender.render(this.scene, this.camera);
       this.requestId = requestAnimationFrame(this.animate);
     },
     init() {
@@ -74,6 +101,7 @@ export default {
       this.initScene();
       this.initCamera();
       this.initRenderer();
+      this.initCSSRender();
       this.initControl();
       this.initRaycater();
     },
@@ -164,9 +192,15 @@ export default {
       cloneObj.position.set(x, y, z);
       this.group.add(cloneObj);
       /**增加文字标签 */
-      const sprite = this.createSprite(cloneObj.$data);
-      sprite.position.set(x, y + 2, z);
-      this.scene.add(sprite);
+      /**sprite方式 */
+      // const sprite = this.createSprite(cloneObj.$data);
+      // sprite.position.set(x, y + 2, z);
+      // this.scene.add(sprite);
+      
+      /**css2dobject方式 */
+      const label = this.create2DObject();
+      label.position.set(x, y + 2, z);
+      this.scene.add(label)
     },
      /**绘制矩形 */
     drawRect(ctx) {
@@ -205,6 +239,20 @@ export default {
       var sprite = new THREE.Sprite(spriteMaterial);
       sprite.scale.set(1.5, 1, 1);
       return sprite;
+    },
+    /**创建css2dobject */
+    create2DObject() {
+      var div = document.createElement('div');
+
+      div.style.width = '200px';
+      div.style.height = '100px';
+      div.style.background = 'rgba(10,18,51,0.8)';
+      div.style.color = '#fff'
+      div.textContent = 'hahaha'
+      div.className = 'label'
+
+      const label = new CSS2DObject(div);
+      return label;
     },
     initRaycater() {
       this.raycaster = new THREE.Raycaster();
@@ -249,12 +297,15 @@ export default {
     this.camera = null;
     this.renderer = null;
     this.controls = null;
+    this.CSSRender = null;
     window.removeEventListener("resize", this.onResize, false);
-    window.removeEventListener("resize", this.onResize, false);
+    window.removeEventListener("click", this.clickModel, false);
   }
 };
 </script>
 
 <style scoped>
-
+#container {
+  height: 1080px;
+}
 </style>
